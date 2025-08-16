@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex Parser - Real-time Visualization</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        textarea, input[type="text"] {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        #corpus {
+            height: 200px;
+        }
+        #pattern {
+            height: 40px;
+        }
+        .results-section {
+            margin-top: 20px;
+        }
+        .stats {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .error {
+            background: #ffe8e8;
+            color: #d00;
+        }
+        #highlighted-text {
+            background: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        mark {
+            background-color: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        .sample-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Regex Visualizor</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="corpus">Text Corpus:</label>
+                <textarea id="corpus" placeholder="Enter your text corpus here...">The quick brown fox jumps over the lazy dog.
+This is a sample text with multiple lines.
+Email addresses: john@example.com, mary.jane@test.org
+Phone numbers: (555) 123-4567, 555-987-6543
+Dates: 2023-12-25, 01/15/2024, March 3rd, 2024</textarea>
+                <div class="sample-text">Try regex patterns like: \b\w+@\w+\.\w+\b (emails), \d{3}-\d{3}-\d{4} (phone), \d{4}-\d{2}-\d{2} (dates)</div>
+            </div>
+            
+            <div class="input-group">
+                <label for="pattern">Regex Pattern:</label>
+                <input type="text" id="pattern" placeholder="Enter regex pattern..." value="">
+                <div class="sample-text">Examples: \b\w+\b (words), \d+ (numbers), [A-Z][a-z]+ (capitalized words)</div>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div id="stats" class="stats">
+                Ready - Enter a regex pattern to see matches highlighted in real-time
+            </div>
+            
+            <div id="highlighted-text">
+                Enter text corpus and regex pattern above to see real-time highlighting
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let debounceTimer;
+        
+        function debounce(func, delay) {
+            return function(...args) {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+        
+        function updateHighlighting() {
+            const corpus = document.getElementById('corpus').value;
+            const pattern = document.getElementById('pattern').value;
+            const statsDiv = document.getElementById('stats');
+            const highlightedDiv = document.getElementById('highlighted-text');
+            
+            if (!corpus) {
+                highlightedDiv.textContent = 'Enter text corpus above';
+                statsDiv.textContent = 'Ready - Enter text corpus and regex pattern';
+                statsDiv.className = 'stats';
+                return;
+            }
+            
+            if (!pattern) {
+                highlightedDiv.textContent = corpus;
+                statsDiv.textContent = 'Enter a regex pattern to see matches';
+                statsDiv.className = 'stats';
+                return;
+            }
+            
+            fetch('/match', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: corpus,
+                    pattern: pattern
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    statsDiv.textContent = `Error: ${data.error}`;
+                    statsDiv.className = 'stats error';
+                    highlightedDiv.textContent = corpus;
+                } else {
+                    const matchText = data.matches === 1 ? 'match' : 'matches';
+                    statsDiv.textContent = `Found ${data.matches} ${matchText}`;
+                    statsDiv.className = 'stats';
+                    highlightedDiv.innerHTML = data.highlighted_text;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statsDiv.textContent = 'Error processing request';
+                statsDiv.className = 'stats error';
+            });
+        }
+        
+        const debouncedUpdate = debounce(updateHighlighting, 300);
+        
+        document.getElementById('corpus').addEventListener('input', debouncedUpdate);
+        document.getElementById('pattern').addEventListener('input', debouncedUpdate);
+        
+        updateHighlighting();
+    </script>
+</body>
+</html>

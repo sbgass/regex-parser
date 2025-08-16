@@ -1,6 +1,6 @@
 # REGEX Visualizor
 
-This was a simple experience with Claude Code to generate a real-time regex visualizor. The total cost was $0.83 and 2m43s. 
+This was a simple experiment with Claude Code to generate a real-time regex visualizor. The total cost was $0.83 and 2m43s. 
 
 ![alt text](demo.gif)
 
